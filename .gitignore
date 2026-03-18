@@ -1,0 +1,78 @@
+# Ignore node_modules and bower_components
+/node_modules
+/bower_components
+
+# Ignore user specific VSCode settings
+.vscode/*.code-snippets
+.vscode/*.keybindings
+vscode/*.launch
+vscode/*.settings
+vscode/*.workspace
+
+# Ignore PHPStorm project settings
+/.phpstorm
+META-INF
+WEB-INF
+
+# Ignore user specific Sublime Text settings
+.sublime-project
+.sublime-workspace
+
+# Ignore cache
+/cache
+
+# Ignore logs and databases
+logs
+*.sql
+*.log
+*.sqlite
+
+# Ignore OS generated files
+.DS_Store
+.Thumbs.db
+ehthumbs.db
+*.swp
+*~.nfs
+*.lock
+*.nfs* .trashes
+*.spotlight-v100
+*.swp
+*.tmp
+*.log
+*.crash
+*.cache
+*.diag
+*.tmpl
+*.old
+*.user
+*.swo
+*.swp
+*.obj
+*.o
+*.exe
+*.dll
+*.manifest
+*.userprefs
+*.pdb
+*.sdf
+*.db
+*.db3
+*.dat
+*.dmp
+*.dmpx
+*.localstorage
+*.mstest
+*.obj
+*.ncb
+*.pdb
+*.suo
+*.tlb
+*.user
+*.vsp
+*.vspx
+*.sap
+*.opendocument
+*.icloud
+*.mobileprovision
+*.xcuserdatad
+*.xcworkspacedata

@@ -1,0 +1,6 @@
+services:
+  cabmanagement:
+    image: cabmanagement
+    build:
+      context: .
+      dockerfile: ./Dockerfile
