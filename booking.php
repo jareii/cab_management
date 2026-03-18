@@ -136,7 +136,13 @@ input:focus, select:focus { border-color:#007bff; }
             <select name="cab_id" required>
                 <option value="">-- Select a Cab --</option>
                 <?php
-                $conn2 = new mysqli("127.0.0.1", "root", "Jareena@2004", "cab_management");
+                $conn2 = new mysqli(
+                    $_ENV['MYSQLHOST'],
+                    $_ENV['MYSQLUSER'],
+                    $_ENV['MYSQLPASSWORD'],
+                    $_ENV['MYSQLDATABASE'],
+                    $_ENV['MYSQLPORT']
+                );
                 $all_cabs = $conn2->query("
                     SELECT c.cab_id, c.cab_number, c.cab_type, c.ac_type,
                            d.name as driver_name
