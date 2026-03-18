@@ -2,7 +2,7 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-$conn = new mysqli("127.0.0.1", "root", "Jareena@2004", "cab_management");
+require 'db_connection.php';
 
 $email = "jareenabanu58@gmail.com";
 
