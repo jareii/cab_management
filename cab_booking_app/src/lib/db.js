@@ -9,8 +9,10 @@ export async function getDb() {
           toArray: async () => [],
           sort: () => ({ limit: () => ({ toArray: async () => [] }) })
         }),
+        findOne: async () => null,
         insertOne: async () => ({ insertedId: null }),
-        updateOne: async () => ({ modifiedCount: 0 })
+        updateOne: async () => ({ modifiedCount: 0 }),
+        findOneAndUpdate: async () => ({ value: null })
       })
     };
   }
