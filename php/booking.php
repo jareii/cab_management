@@ -6,7 +6,10 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
-require 'db_connection.php';
+require_once "mongo_helpers.php";
+
+$conn = new mysqli("localhost", "root", "Jareena@2004", "cab_management");
+if ($conn->connect_error) die("Connection failed: " . $conn->connect_error);
 
 $user_id   = $_SESSION['user_id'];
 $user_name = $_SESSION['user_name'];
@@ -25,6 +28,43 @@ if (isset($_POST['book'])) {
 
     if ($stmt->execute()) {
         $success = "Cab booked successfully!";
+        $booking_id = $conn->insert_id;
+
+        if (mongo_is_ready()) {
+            $cab_stmt = $conn->prepare("
+                SELECT c.cab_number, c.cab_type,
+                       d.name as driver_name, d.phone as driver_phone
+                FROM cabs c
+                LEFT JOIN drivers d ON c.driver_id = d.driver_id
+                WHERE c.cab_id = ?
+                LIMIT 1
+            ");
+            $cab_stmt->bind_param("i", $cab_id);
+            $cab_stmt->execute();
+            $cab = $cab_stmt->get_result()->fetch_assoc();
+            $cab_stmt->close();
+
+            $snapshot = [
+                "user_id" => $user_id,
+                "booking_id" => $booking_id,
+                "booking_date" => $date,
+                "booking_time" => $time,
+                "pickup_location" => $pickup,
+                "drop_location" => $drop,
+                "status" => "Confirmed",
+                "cab_id" => (int)$cab_id,
+                "cab_number" => $cab['cab_number'] ?? '',
+                "cab_type" => $cab['cab_type'] ?? '',
+                "driver_name" => $cab['driver_name'] ?? '',
+                "driver_phone" => $cab['driver_phone'] ?? '',
+            ];
+
+            try {
+                mongo_upsert_booking_snapshot($snapshot);
+            } catch (Exception $e) {
+                // If Mongo is down, keep the MySQL booking and proceed.
+            }
+        }
     } else {
         $error = "Booking failed. Please try again.";
     }
@@ -136,13 +176,7 @@ input:focus, select:focus { border-color:#007bff; }
             <select name="cab_id" required>
                 <option value="">-- Select a Cab --</option>
                 <?php
-                $conn2 = new mysqli(
-                    $_ENV['MYSQLHOST'],
-                    $_ENV['MYSQLUSER'],
-                    $_ENV['MYSQLPASSWORD'],
-                    $_ENV['MYSQLDATABASE'],
-                    $_ENV['MYSQLPORT']
-                );
+                $conn2 = new mysqli("localhost", "root", "Jareena@2004", "cab_management");
                 $all_cabs = $conn2->query("
                     SELECT c.cab_id, c.cab_number, c.cab_type, c.ac_type,
                            d.name as driver_name

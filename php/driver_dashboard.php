@@ -6,7 +6,8 @@ if (!isset($_SESSION['driver_id'])) {
     exit();
 }
 
-require 'db_connection.php';
+$conn = new mysqli("localhost", "root", "Jareena@2004", "cab_management");
+if ($conn->connect_error) die("Connection failed: " . $conn->connect_error);
 
 $driver_id   = $_SESSION['driver_id'];
 $driver_name = $_SESSION['driver_name'];

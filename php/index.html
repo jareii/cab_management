@@ -10,9 +10,7 @@
     box-sizing: border-box;
     font-family: Arial, Helvetica, sans-serif;
 }
-body {
-    background: #f4f6fb;
-}
+body { background: #f4f6fb; }
 .navbar {
     display: flex;
     justify-content: space-between;
@@ -21,11 +19,7 @@ body {
     background: white;
     box-shadow: 0 2px 10px rgba(0,0,0,0.1);
 }
-.logo {
-    font-size: 22px;
-    font-weight: bold;
-    color: #2c3e50;
-}
+.logo { font-size: 22px; font-weight: bold; color: #2c3e50; }
 .nav-links a {
     margin-left: 16px;
     text-decoration: none;
@@ -34,7 +28,6 @@ body {
     font-size: 14px;
     padding: 8px 16px;
     border-radius: 6px;
-    transition: background 0.2s;
 }
 .nav-links a:hover { background: #f0f0f0; }
 .nav-links a.btn-nav { background: #007bff; color: white; }
@@ -46,10 +39,10 @@ body {
     padding: 80px;
 }
 .hero-text { max-width: 500px; }
-.hero-text h1 { font-size: 45px; color: #2c3e50; margin-bottom: 20px; line-height: 1.2; }
+.hero-text h1 { font-size: 45px; color: #2c3e50; margin-bottom: 20px; }
 .hero-text p { font-size: 18px; color: #555; margin-bottom: 30px; }
 .hero-btns { display: flex; gap: 12px; flex-wrap: wrap; }
-.btn { padding: 12px 25px; background: #007bff; color: white; border: none; border-radius: 6px; text-decoration: none; font-size: 15px; transition: background 0.2s; }
+.btn { padding: 12px 25px; background: #007bff; color: white; border: none; border-radius: 6px; text-decoration: none; font-size: 15px; }
 .btn:hover { background: #0056b3; }
 .btn-green { background: #28a745; }
 .btn-green:hover { background: #218838; }
@@ -83,25 +76,25 @@ body {
 <body>
 
 <div class="navbar">
-    <div class="logo">🚕 Cab System</div>
+    <div class="logo">&#128661; Cab System</div>
     <div class="nav-links">
         <a href="index.html">Home</a>
         <a href="login.php">User Login</a>
         <a href="register.php">Register</a>
-        <a href="driver_login.php">Driver Login</a>
-        <a href="admin_login.php">Admin Login</a>
+        <a href="driver_login.php">Driver</a>
+        <a href="admin_login.php">Admin</a>
         <a href="login.php" class="btn-nav">Book Now</a>
     </div>
 </div>
 
 <div class="hero">
     <div class="hero-text">
-        <h1>Book Your Cab Easily 🚕</h1>
-        <p>Fast, safe and reliable cab booking system. Book rides anytime and travel comfortably with AC and Non-AC options.</p>
+        <h1>Welcome to Cab System</h1>
+        <p>Fast, safe and reliable cab booking. Choose your portal to access user, driver, or admin features.</p>
         <div class="hero-btns">
-            <a class="btn" href="register.php">Get Started</a>
-            <a class="btn btn-green" href="login.php">Book Now</a>
-            <a class="btn btn-outline" href="driver_login.php">Driver Login</a>
+            <a class="btn" href="login.php">User Portal</a>
+            <a class="btn btn-green" href="driver_login.php">Driver Portal</a>
+            <a class="btn btn-outline" href="admin_login.php">Admin Portal</a>
         </div>
     </div>
     <img src="https://cdn-icons-png.flaticon.com/512/744/744465.png">
@@ -111,22 +104,22 @@ body {
     <h2>Why Choose Us?</h2>
     <div class="feature-cards">
         <div class="feature-card">
-            <div class="icon">❄️</div>
+            <div class="icon">&#10052;</div>
             <h3>AC and Non-AC</h3>
             <p>Choose between AC and Non-AC cabs as per your comfort</p>
         </div>
         <div class="feature-card">
-            <div class="icon">🚗</div>
+            <div class="icon">&#128663;</div>
             <h3>Multiple Cab Types</h3>
             <p>Mini, Sedan, SUV and Premium cabs available</p>
         </div>
         <div class="feature-card">
-            <div class="icon">📍</div>
+            <div class="icon">&#128205;</div>
             <h3>Live Trip Status</h3>
             <p>Track your trip status from Confirmed to Dropped</p>
         </div>
         <div class="feature-card">
-            <div class="icon">✏️</div>
+            <div class="icon">&#9999;</div>
             <h3>Easy Booking</h3>
             <p>Book, edit or cancel your cab anytime easily</p>
         </div>
@@ -139,22 +132,25 @@ body {
 </div>
 
 <div class="login-section">
-    <h2>Login As</h2>
+    <h2>Choose Portal</h2>
     <div class="login-cards">
         <div class="login-card">
-            <div class="icon">👤</div>
+            <div class="icon">&#128100;</div>
             <h3>User</h3>
             <p>Book cabs, track trips and manage your bookings</p>
             <a class="btn btn-user" href="login.php">User Login</a>
+            <div style="margin-top:10px;font-size:12px;">
+                New user? <a href="register.php" style="color:#007bff;text-decoration:none;">Register</a>
+            </div>
         </div>
         <div class="login-card">
-            <div class="icon">🚕</div>
+            <div class="icon">&#128661;</div>
             <h3>Driver</h3>
             <p>View assigned trips and update pickup and drop status</p>
             <a class="btn btn-driver" href="driver_login.php">Driver Login</a>
         </div>
         <div class="login-card">
-            <div class="icon">🔐</div>
+            <div class="icon">&#128274;</div>
             <h3>Admin</h3>
             <p>Manage all users, drivers, cabs and bookings</p>
             <a class="btn btn-admin" href="admin_login.php">Admin Login</a>
@@ -163,11 +159,8 @@ body {
 </div>
 
 <div class="footer">
-    <p>🚕 Cab Management System - DBMS Microproject | Rajiv Gandhi Institute of Technology, Kottayam</p>
+    <p>&#128661; Cab Management System - DBMS Microproject | Rajiv Gandhi Institute of Technology, Kottayam</p>
 </div>
 
 </body>
 </html>
-```
-
--

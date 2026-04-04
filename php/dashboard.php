@@ -6,37 +6,47 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
-require 'db_connection.php';
+require_once "mongo_helpers.php";
 
 $user_id   = $_SESSION['user_id'];
 $user_name = $_SESSION['user_name'];
 
-// Handle cancel booking
-if (isset($_POST['cancel'])) {
-    $booking_id = $_POST['booking_id'];
-    $stmt = $conn->prepare("UPDATE booking SET status='Cancelled' WHERE booking_id=? AND user_id=?");
-    $stmt->bind_param("ii", $booking_id, $user_id);
-    $stmt->execute();
-    $stmt->close();
+// Handle cancel booking (MongoDB snapshot update only)
+if (isset($_POST['cancel']) && mongo_is_ready()) {
+    $booking_id = (int)$_POST->booking_id;
+    $booking = mongo_get_booking($user_id, $booking_id);
+    if ($booking) {
+        mongo_upsert_booking_snapshot([
+            "user_id" => (int)$booking->user_id,
+            "booking_id" => (int)$booking->booking_id,
+            "booking_date" => (string)$booking->booking_date,
+            "booking_time" => (string)$booking->booking_time,
+            "pickup_location" => (string)$booking->pickup_location,
+            "drop_location" => (string)$booking->drop_location,
+            "status" => "Cancelled",
+            "cab_id" => (int)$booking->cab_id,
+            "cab_number" => (string)$booking->cab_number,
+            "cab_type" => (string)$booking->cab_type,
+            "driver_name" => (string)$booking->driver_name,
+            "driver_phone" => (string)$booking->driver_phone,
+        ]);
+    }
 }
 
-// Get user's bookings
-$stmt = $conn->prepare("
-    SELECT b.booking_id, b.booking_date, b.booking_time,
-           b.pickup_location, b.drop_location, b.status,
-           c.cab_number, c.cab_type,
-           d.name as driver_name, d.phone as driver_phone
-    FROM booking b
-    LEFT JOIN cabs c ON b.cab_id = c.cab_id
-    LEFT JOIN drivers d ON c.driver_id = d.driver_id
-    WHERE b.user_id = ?
-    ORDER BY b.booking_date DESC, b.booking_time DESC
-");
-$stmt->bind_param("i", $user_id);
-$stmt->execute();
-$bookings = $stmt->get_result();
-$stmt->close();
-$conn->close();
+// Get user's bookings from MongoDB
+$bookings = [];
+if (mongo_is_ready()) {
+    $bookings = mongo_get_bookings($user_id);
+}
+
+$payment_statuses = [];
+if (mongo_is_ready() && $bookings) {
+    $booking_ids = [];
+    foreach ($bookings as $row) {
+        $booking_ids[] = (int)$row->booking_id;
+    }
+    $payment_statuses = mongo_get_payment_statuses($user_id, $booking_ids);
+}
 ?>
 
 <!DOCTYPE html>
@@ -96,7 +106,7 @@ tbody tr:last-child td { border-bottom:none; }
 
 <div class="stats-row">
     <div class="stat-card">
-        <h2><?php echo $bookings->num_rows; ?></h2>
+        <h2><?php echo count($bookings); ?></h2>
         <p>Total Bookings</p>
     </div>
     <div class="stat-card">
@@ -116,7 +126,7 @@ tbody tr:last-child td { border-bottom:none; }
 <div class="section">
     <h3>Your Bookings</h3>
     <div class="table-wrap">
-    <?php if ($bookings->num_rows > 0): ?>
+    <?php if (count($bookings) > 0): ?>
     <table>
         <thead>
             <tr>
@@ -129,36 +139,48 @@ tbody tr:last-child td { border-bottom:none; }
                 <th>Driver</th>
                 <th>Driver Phone</th>
                 <th>Status</th>
+                <th>Payment</th>
                 <th>Action</th>
             </tr>
         </thead>
         <tbody>
-            <?php $i = 1; while($row = $bookings->fetch_assoc()): ?>
+            <?php $i = 1; foreach ($bookings as $row): ?>
             <tr>
                 <td><?php echo $i++; ?></td>
-                <td><?php echo $row['booking_date']; ?></td>
-                <td><?php echo $row['booking_time'] ?? '-'; ?></td>
-                <td><?php echo htmlspecialchars($row['pickup_location']); ?></td>
-                <td><?php echo htmlspecialchars($row['drop_location']); ?></td>
-                <td><?php echo htmlspecialchars($row['cab_number'] ?? '-'); ?> (<?php echo htmlspecialchars($row['cab_type'] ?? '-'); ?>)</td>
-                <td><?php echo htmlspecialchars($row['driver_name'] ?? 'Not Assigned'); ?></td>
-                <td><?php echo htmlspecialchars($row['driver_phone'] ?? '-'); ?></td>
+                <td><?php echo $row->booking_date; ?></td>
+                <td><?php echo $row->booking_time ?? '-'; ?></td>
+                <td><?php echo htmlspecialchars($row->pickup_location); ?></td>
+                <td><?php echo htmlspecialchars($row->drop_location); ?></td>
+                <td><?php echo htmlspecialchars($row->cab_number ?? '-'); ?> (<?php echo htmlspecialchars($row->cab_type ?? '-'); ?>)</td>
+                <td><?php echo htmlspecialchars($row->driver_name ?? 'Not Assigned'); ?></td>
+                <td><?php echo htmlspecialchars($row->driver_phone ?? '-'); ?></td>
                 <td>
-                    <?php if($row['status'] == 'Confirmed'): ?>
+                    <?php if($row->status == 'Confirmed'): ?>
                         <span class="badge-confirmed">✅ Confirmed</span>
-                    <?php elseif($row['status'] == 'Picked'): ?>
+                    <?php elseif($row->status == 'Picked'): ?>
                         <span class="badge-picked">🚗 Picked</span>
-                    <?php elseif($row['status'] == 'Dropped'): ?>
+                    <?php elseif($row->status == 'Dropped'): ?>
                         <span class="badge-dropped">📍 Dropped</span>
                     <?php else: ?>
                         <span class="badge-cancelled">❌ Cancelled</span>
                     <?php endif; ?>
                 </td>
+                <td>
+                    <?php if (!mongo_is_ready()): ?>
+                        <span style="color:#c0392b;font-size:12px;">MongoDB not ready</span>
+                    <?php else: ?>
+                        <?php
+                            $ps = $payment_statuses[(int)$row->booking_id] ?? "Not Paid";
+                            echo htmlspecialchars($ps);
+                        ?>
+                    <?php endif; ?>
+                </td>
                 <td style="display:flex;gap:6px;flex-wrap:wrap;">
-                    <?php if($row['status'] == 'Confirmed'): ?>
-                        <a href="edit_booking.php?id=<?php echo $row['booking_id']; ?>" style="padding:5px 10px;background:#007bff;color:white;border-radius:5px;font-size:12px;text-decoration:none;">✏️ Edit</a>
+                    <?php if($row->status == 'Confirmed'): ?>
+                        <a href="edit_booking.php?id=<?php echo (int)$row->booking_id; ?>" style="padding:5px 10px;background:#007bff;color:white;border-radius:5px;font-size:12px;text-decoration:none;">✏️ Edit</a>
+                        <a href="payment.php?id=<?php echo (int)$row->booking_id; ?>" style="padding:5px 10px;background:#28a745;color:white;border-radius:5px;font-size:12px;text-decoration:none;">Pay</a>
                         <form method="POST" onsubmit="return confirm('Cancel this booking?')">
-                            <input type="hidden" name="booking_id" value="<?php echo $row['booking_id']; ?>">
+                            <input type="hidden" name="booking_id" value="<?php echo (int)$row->booking_id; ?>">
                             <button type="submit" name="cancel" class="btn-cancel">❌ Cancel</button>
                         </form>
                     <?php else: ?>
@@ -166,7 +188,7 @@ tbody tr:last-child td { border-bottom:none; }
                     <?php endif; ?>
                 </td>
             </tr>
-            <?php endwhile; ?>
+            <?php endforeach; ?>
         </tbody>
     </table>
     <?php else: ?>

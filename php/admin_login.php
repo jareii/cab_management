@@ -6,7 +6,11 @@ if (isset($_SESSION['admin_id'])) {
     exit();
 }
 
-require 'db_connection.php';
+$conn = new mysqli("localhost", "root", "Jareena@2004", "cab_management");
+
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
+}
 
 $error = "";
 
