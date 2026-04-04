@@ -16,5 +16,5 @@ export async function getDb() {
       })
     };
   }
-  return client.db();
+  return client.db("CabPayment");
 }
