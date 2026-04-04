@@ -27,7 +27,7 @@ export default async function PaymentPage({ params, searchParams }) {
     Number.isFinite(bookingIdNumber) && bookingIdNumber > 0
       ? bookingIdNumber
       : bookingIdRaw || null;
-  let booking = null;
+
   if (!idForQuery) {
     return (
       <main className="form-shell">
@@ -40,13 +40,20 @@ export default async function PaymentPage({ params, searchParams }) {
     );
   }
 
+  let booking = null;
+
   const rows = await query(
     `SELECT b.booking_id, b.booking_date, b.booking_time, b.pickup_location, b.drop_location, b.status,
-            b.distance_km, b.fare_amount, b.payment_status, b.user_id
+            b.distance_km, b.fare_amount, b.payment_status, b.user_id,
+            u.name AS user_name, u.email AS user_email, u.phone AS user_phone,
+            d.name AS driver_name, d.phone AS driver_phone, d.license_no AS driver_license
      FROM booking b
+     LEFT JOIN users u ON b.user_id = u.user_id
+     LEFT JOIN drivers d ON b.driver_id = d.driver_id
      WHERE b.booking_id = ?`,
     [idForQuery]
   );
+
   if (rows.length > 0) {
     booking = rows[0];
   }
@@ -54,8 +61,12 @@ export default async function PaymentPage({ params, searchParams }) {
   if (!booking) {
     const latest = await query(
       `SELECT b.booking_id, b.booking_date, b.booking_time, b.pickup_location, b.drop_location, b.status,
-              b.distance_km, b.fare_amount, b.payment_status, b.user_id
+              b.distance_km, b.fare_amount, b.payment_status, b.user_id,
+              u.name AS user_name, u.email AS user_email, u.phone AS user_phone,
+              d.name AS driver_name, d.phone AS driver_phone, d.license_no AS driver_license
        FROM booking b
+       LEFT JOIN users u ON b.user_id = u.user_id
+       LEFT JOIN drivers d ON b.driver_id = d.driver_id
        WHERE b.user_id = ?
        ORDER BY b.booking_date DESC, b.booking_time DESC
        LIMIT 1`,
@@ -113,10 +124,24 @@ export default async function PaymentPage({ params, searchParams }) {
       <div className="form-card">
         <span className="pill">Payment</span>
         <h2>Booking #{booking.booking_id}</h2>
-        <p>{booking.pickup_location} to {booking.drop_location}</p>
+
+        <p className="portal-meta">👤 User: {booking.user_name || "N/A"}</p>
+        <p className="portal-meta">📧 Email: {booking.user_email || "N/A"}</p>
+        <p className="portal-meta">📞 Phone: {booking.user_phone || "N/A"}</p>
+
+        <hr />
+
+        <p className="portal-meta">🚗 Driver: {booking.driver_name || "Not assigned"}</p>
+        <p className="portal-meta">📞 Driver Phone: {booking.driver_phone || "N/A"}</p>
+        <p className="portal-meta">🪪 License: {booking.driver_license || "N/A"}</p>
+
+        <hr />
+
+        <p>{booking.pickup_location} → {booking.drop_location}</p>
         <p className="portal-meta">Trip status: {booking.status}</p>
         <p className="portal-meta">Payment status: {payment?.status || booking.payment_status || "Not Paid"}</p>
         <p className="portal-meta">Fare: {fareAmount ? `INR ${Number(fareAmount).toFixed(2)}` : "Waiting for driver distance"}</p>
+
         {!isDropped && <p className="pill">Payment is allowed only after the trip is dropped.</p>}
         {!hasDistance && <p className="pill">Driver must enter distance before payment.</p>}
         {search?.error === "notdropped" && <p className="pill">Trip not dropped yet. Please pay after drop.</p>}
@@ -124,6 +149,7 @@ export default async function PaymentPage({ params, searchParams }) {
         {search?.error === "notfound" && <p className="pill">Booking not found.</p>}
         {search?.saved && <p className="pill">Payment saved.</p>}
         {search?.error && <p className="pill">Please fill all fields.</p>}
+
         <form className="form-grid" action="/api/payment/save" method="POST">
           <input type="hidden" name="booking_id" value={booking.booking_id} />
           <input type="hidden" name="amount" value={fareAmount || 0} />
@@ -135,7 +161,9 @@ export default async function PaymentPage({ params, searchParams }) {
               <option value="Card">Card</option>
             </select>
           </div>
-          <button className="btn" type="submit" disabled={!isDropped || !hasDistance}>Save Payment</button>
+          <button className="btn" type="submit" disabled={!isDropped || !hasDistance}>
+            Save Payment
+          </button>
         </form>
       </div>
     </main>

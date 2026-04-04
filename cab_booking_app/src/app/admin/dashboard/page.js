@@ -51,7 +51,7 @@ export default async function AdminDashboard() {
     ),
     query("SELECT * FROM view_driver_earnings"),
     query("SELECT user_id, name, email FROM users ORDER BY user_id DESC"),
-    query("SELECT driver_id, name, phone, status FROM drivers ORDER BY driver_id DESC"),
+    query("SELECT driver_id, name, email, phone, password, status FROM drivers ORDER BY driver_id DESC"),
     query(
       `SELECT b.booking_id, b.booking_date, b.booking_time, b.pickup_location, b.drop_location, b.status,
               b.user_id, b.driver_id, b.payment_status, b.distance_km, b.fare_amount,
@@ -272,6 +272,8 @@ export default async function AdminDashboard() {
               <thead>
                 <tr>
                   <th>Driver</th>
+                  <th>Email</th>
+                  <th>Password</th>
                   <th>Phone</th>
                   <th>Total bookings</th>
                   <th>On duty</th>
@@ -286,6 +288,8 @@ export default async function AdminDashboard() {
                   return (
                     <tr key={driver.driver_id}>
                       <td>{driver.name}</td>
+                      <td>{driver.email || "-"}</td>
+                      <td><code style={{ background: '#f5f5f5', padding: '2px 6px', borderRadius: 4 }}>{driver.password || "-"}</code></td>
                       <td>{driver.phone}</td>
                       <td>{stats?.totalBookings || 0}</td>
                       <td><span className="chip">{stats?.onDuty ? "On duty" : "Off duty"}</span></td>

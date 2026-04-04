@@ -122,10 +122,13 @@ export default async function UserDashboard({ searchParams }) {
               </thead>
               <tbody>
                 {bookings.map((booking) => {
+                  const isPaid = paymentMap.get(booking.booking_id) === "Paid" || booking.payment_status === "Paid";
+                  const displayPayment = paymentMap.get(booking.booking_id) || booking.payment_status || "Not Paid";
                   const canCancel = booking.status !== "Dropped" && booking.status !== "Cancelled";
                   const canPay =
                     booking.status === "Dropped" &&
-                    (booking.distance_km || booking.fare_amount);
+                    (booking.distance_km || booking.fare_amount) &&
+                    !isPaid;
                   return (
                   <tr key={booking.booking_id}>
                     <td>#{booking.booking_id}</td>
@@ -137,8 +140,8 @@ export default async function UserDashboard({ searchParams }) {
                     <td>{booking.fare_amount ? `INR ${Number(booking.fare_amount).toFixed(2)}` : "-"}</td>
                     <td><span className="chip">{booking.status}</span></td>
                     <td>
-                      <span className={statusClass(paymentMap.get(booking.booking_id) || "Not Paid")}>
-                        {paymentMap.get(booking.booking_id) || "Not Paid"}
+                      <span className={statusClass(displayPayment)}>
+                        {displayPayment}
                       </span>
                     </td>
                     <td>

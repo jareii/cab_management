@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { revalidatePath } from "next/cache";
 import { getDb } from "@/lib/db";
 import { query, exec } from "@/lib/mysql";
 import { computeFare } from "@/lib/fare";
@@ -68,5 +69,7 @@ export async function POST(request) {
     ["Paid", now, now, bookingId, Number(userId)]
   );
 
-  return NextResponse.redirect(new URL(`/user/payment/${bookingId}?saved=1`, request.url));
+  revalidatePath("/user/dashboard");
+  revalidatePath(`/user/payment/${bookingId}`);
+  return NextResponse.redirect(new URL("/user/dashboard?payment_success=1", request.url));
 }
