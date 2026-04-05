@@ -37,8 +37,7 @@ export default async function AdminDashboard() {
     driverEarnings,
     users,
     drivers,
-    allBookings,
-    payments,
+    allBookings
   ] = await Promise.all([
     query("SELECT COUNT(*) as count FROM users"),
     query("SELECT COUNT(*) as count FROM drivers"),
@@ -61,24 +60,39 @@ export default async function AdminDashboard() {
        LEFT JOIN cabs c ON b.cab_id = c.cab_id
        LEFT JOIN drivers d ON c.driver_id = d.driver_id
        LEFT JOIN users u ON b.user_id = u.user_id`
-    ),
-    getDb().then(db => db.collection("payments").find().toArray()).catch(() => []),
+    )
   ]);
+
+  const payments = await getDb().then(db => db.collection("payments").find().toArray()).catch(() => []);
+  const pendingCountRows = await query("SELECT COUNT(*) as count FROM drivers WHERE status = 'Pending'");
+  const pendingEditsCountRows = await query("SELECT COUNT(*) as count FROM driver_edit_requests WHERE status = 'Pending'");
+  
+  // Safe Fallback: If MongoDB is blocked by ISP/WiFi, use synchronized MySQL data
+  const activePayments = payments.length > 0 ? payments : allBookings.filter(b => b.payment_status === 'Paid').map(b => ({
+    booking_id: b.booking_id,
+    user_id: b.user_id,
+    amount: b.fare_amount,
+    status: b.payment_status,
+    created_at: b.booking_date,
+    updated_at: b.booking_date
+  }));
 
   const userCount = userCountRows[0]?.count || 0;
   const driverCount = driverCountRows[0]?.count || 0;
   const cabCount = cabCountRows[0]?.count || 0;
   const bookingCount = bookingCountRows[0]?.count || 0;
-  const paymentCount = payments.length;
+  const pendingCount = pendingCountRows[0]?.count || 0;
+  const pendingEditsCount = pendingEditsCountRows[0]?.count || 0;
+  const paymentCount = activePayments.length;
 
-  const recentPaid = payments.filter((p) => {
-    if (!p.updated_at) return false;
-    const updated = new Date(p.updated_at).getTime();
+  const recentPaid = activePayments.filter((p) => {
+    if (!p.updated_at && !p.created_at) return false;
+    const updated = new Date(p.updated_at || p.created_at).getTime();
     return Number.isFinite(updated) && Date.now() - updated < 24 * 60 * 60 * 1000;
   });
 
   const userMap = new Map(users.map((u) => [u.user_id, u]));
-  const paymentsByBooking = new Map(payments.map((p) => [p.booking_id, p]));
+  const paymentsByBooking = new Map(activePayments.map((p) => [p.booking_id, p]));
 
   const driverStats = new Map();
   const earningsMap = new Map(driverEarnings.map((row) => [row.driver_id, row]));
@@ -130,7 +144,7 @@ export default async function AdminDashboard() {
   const sumAmount = (list) =>
     list.reduce((total, payment) => total + Number(payment.amount || 0), 0);
 
-  const paidPayments = payments.filter((p) => p.status === "Paid");
+  const paidPayments = activePayments.filter((p) => p.status === "Paid");
   const totalEarnings = sumAmount(paidPayments);
   const now = new Date();
   const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -195,26 +209,69 @@ export default async function AdminDashboard() {
           {recentPaid.length > 0 && (
             <p className="pill">Payment received: {recentPaid.length} in the last 24 hours.</p>
           )}
+          {pendingCount > 0 && (
+            <div style={{marginTop: 10}}>
+              <p className="pill" style={{background: '#f5a623', color: '#111'}}>
+                ⚠️ Action Required: {pendingCount} new driver application(s) awaiting approval!
+              </p>
+            </div>
+          )}
+          {pendingEditsCount > 0 && (
+            <div style={{marginTop: 10}}>
+              <p className="pill" style={{background: '#3b82f6', color: 'white'}}>
+                📝 Heads up: {pendingEditsCount} driver profile edit request(s) awaiting approval!
+              </p>
+            </div>
+          )}
           <div className="hero-actions">
-            <a className="btn" href="/admin/drivers">Add Driver + Cab</a>
+            <a className="btn" href="/admin/drivers">Review Driver Applications</a>
             <form action="/api/user/logout" method="POST">
               <button className="btn secondary" type="submit">Logout</button>
             </form>
           </div>
         </div>
-        <div className="hero-content">
-          <div className="portal-card">
-            <h3 className="portal-title">Totals</h3>
-            <p className="portal-meta">Users: {userCount}</p>
-            <p className="portal-meta">Drivers: {driverCount}</p>
-            <p className="portal-meta">Cabs: {cabCount}</p>
-            <p className="portal-meta">Bookings: {bookingCount}</p>
-            <p className="portal-meta">Payments: {paymentCount}</p>
-            <p className="portal-meta">Total earnings: INR {totalEarnings.toFixed(2)}</p>
-            <p className="portal-meta">Today: INR {totalToday.toFixed(2)}</p>
-            <p className="portal-meta">This month: INR {totalMonth.toFixed(2)}</p>
-            <p className="portal-meta">This year: INR {totalYear.toFixed(2)}</p>
+      </section>
+
+      {/* Premium Analytics Metric Cards */}
+      <section style={{ padding: '0 64px', marginTop: '-40px', position: 'relative', zIndex: 5, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+        
+        {/* Revenue Cards */}
+        <div style={{ background: 'linear-gradient(135deg, #0f766e, #0f172a)', color: 'white', padding: '24px', borderRadius: '20px', boxShadow: '0 10px 30px rgba(15, 118, 110, 0.3)' }}>
+          <div style={{ fontSize: '13px', opacity: 0.8, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>Total Revenue</div>
+          <div style={{ fontSize: '32px', fontWeight: 800 }}>₹{totalEarnings.toFixed(2)}</div>
+          <div style={{ marginTop: '12px', fontSize: '14px', display: 'flex', justifyContent: 'space-between' }}>
+            <span>Today: ₹{totalToday.toFixed(0)}</span>
+            <span>Month: ₹{totalMonth.toFixed(0)}</span>
           </div>
+        </div>
+
+        {/* Bookings Card */}
+        <div style={{ background: 'white', padding: '24px', borderRadius: '20px', boxShadow: 'var(--shadow)', border: '1px solid rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <div style={{ fontSize: '13px', color: 'var(--muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px' }}>Bookings</div>
+            <div style={{ background: '#e0f2fe', width: '32px', height: '32px', borderRadius: '8px', display: 'grid', placeItems: 'center', color: '#0369a1' }}>📱</div>
+          </div>
+          <div style={{ fontSize: '32px', fontWeight: 800, color: 'var(--ink)' }}>{bookingCount}</div>
+          <div style={{ fontSize: '13px', color: '#10b981', marginTop: '4px', fontWeight: 600 }}>{paymentCount} Completed Payments</div>
+        </div>
+
+        {/* Users Card */}
+        <div style={{ background: 'white', padding: '24px', borderRadius: '20px', boxShadow: 'var(--shadow)', border: '1px solid rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <div style={{ fontSize: '13px', color: 'var(--muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px' }}>Passengers</div>
+            <div style={{ background: '#fef3c7', width: '32px', height: '32px', borderRadius: '8px', display: 'grid', placeItems: 'center', color: '#b45309' }}>👥</div>
+          </div>
+          <div style={{ fontSize: '32px', fontWeight: 800, color: 'var(--ink)' }}>{userCount}</div>
+        </div>
+
+        {/* Drivers / Cabs Card */}
+        <div style={{ background: 'white', padding: '24px', borderRadius: '20px', boxShadow: 'var(--shadow)', border: '1px solid rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <div style={{ fontSize: '13px', color: 'var(--muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px' }}>Fleet Size</div>
+            <div style={{ background: '#fce7f3', width: '32px', height: '32px', borderRadius: '8px', display: 'grid', placeItems: 'center', color: '#be185d' }}>🚕</div>
+          </div>
+          <div style={{ fontSize: '32px', fontWeight: 800, color: 'var(--ink)' }}>{driverCount}</div>
+          <div style={{ fontSize: '13px', color: 'var(--muted)', marginTop: '4px', fontWeight: 600 }}>Piloting {cabCount} Cabs</div>
         </div>
       </section>
 
@@ -249,7 +306,11 @@ export default async function AdminDashboard() {
                       <td>{booking.user_phone || "-"}</td>
                       <td>{booking.driver_name}</td>
                       <td>{booking.pickup_location} {"->"} {booking.drop_location}</td>
-                      <td><span className="chip">{booking.status}</span></td>
+                      <td><span className="chip" style={
+                        booking.status === 'Rejected' || booking.status === 'Cancelled' ? {color: 'white', backgroundColor: '#ef4444'} :
+                        booking.status === 'Confirmed' || booking.status === 'Picked' ? {color: 'white', backgroundColor: 'var(--primary)'} :
+                        booking.status === 'Requested' ? {color: 'white', backgroundColor: '#f5a623'} : {}
+                      }>{booking.status}</span></td>
                       <td>{payment?.status || booking.payment_status || "Not Paid"}</td>
                       <td>INR {payment?.amount ? Number(payment.amount).toFixed(2) : Number(booking.fare_amount || 0).toFixed(2)}</td>
                       <td>{booking.cab_number || "-"}</td>
@@ -280,6 +341,7 @@ export default async function AdminDashboard() {
                   <th>Currently in ride</th>
                   <th>Paid trips</th>
                   <th>Total collected</th>
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -292,10 +354,20 @@ export default async function AdminDashboard() {
                       <td><code style={{ background: '#f5f5f5', padding: '2px 6px', borderRadius: 4 }}>{driver.password || "-"}</code></td>
                       <td>{driver.phone}</td>
                       <td>{stats?.totalBookings || 0}</td>
-                      <td><span className="chip">{stats?.onDuty ? "On duty" : "Off duty"}</span></td>
-                      <td><span className="chip">{stats?.inRide ? "In ride" : "Idle"}</span></td>
+                      <td><span className="chip" style={stats?.onDuty ? {backgroundColor: 'var(--primary)', color: 'white'} : {}}>{stats?.onDuty ? "On duty" : "Off duty"}</span></td>
+                      <td><span className="chip" style={stats?.inRide ? {backgroundColor: '#f5a623', color: 'white'} : {}}>{stats?.inRide ? "In ride" : "Idle"}</span></td>
                       <td>{stats?.paidCount || 0}</td>
                       <td>INR {stats?.collected?.toFixed(2) || "0.00"}</td>
+                      <td>
+                        {driver.status !== "Removed" ? (
+                        <form action="/api/admin/driver/reject" method="POST">
+                          <input type="hidden" name="driver_id" value={driver.driver_id} />
+                          <button className="btn secondary" style={{padding: '4px 8px', fontSize: 12, borderColor: '#ef4444', color: '#ef4444'}} type="submit">Remove</button>
+                        </form>
+                        ) : (
+                          <span style={{fontSize: 12, color: '#ef4444', fontWeight: 600}}>Removed</span>
+                        )}
+                      </td>
                     </tr>
                   );
                 })}
@@ -346,6 +418,7 @@ export default async function AdminDashboard() {
                   <th>Email</th>
                   <th>Total bookings</th>
                   <th>Last booking date</th>
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -355,6 +428,12 @@ export default async function AdminDashboard() {
                     <td>{user.email}</td>
                     <td>{user.bookingCount}</td>
                     <td>{user.lastBooking}</td>
+                    <td>
+                        <form action="/api/admin/user/remove" method="POST">
+                          <input type="hidden" name="user_id" value={user.user_id} />
+                          <button className="btn secondary" style={{padding: '4px 8px', fontSize: 12, borderColor: '#ef4444', color: '#ef4444'}} type="submit">Delete</button>
+                        </form>
+                    </td>
                   </tr>
                 ))}
               </tbody>

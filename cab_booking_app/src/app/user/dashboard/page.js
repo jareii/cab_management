@@ -33,7 +33,7 @@ export default async function UserDashboard({ searchParams }) {
   const bookingsRaw = await query(
     `SELECT b.booking_id, b.booking_date, b.booking_time, b.pickup_location, b.drop_location, b.status,
             b.distance_km, b.fare_amount, b.payment_status, b.created_at, b.updated_at,
-            c.cab_number, c.cab_type, d.name as driver_name
+            c.cab_number, c.cab_type, d.name as driver_name, d.phone as driver_phone
      FROM booking b
      LEFT JOIN cabs c ON b.cab_id = c.cab_id
      LEFT JOIN drivers d ON c.driver_id = d.driver_id
@@ -71,13 +71,16 @@ export default async function UserDashboard({ searchParams }) {
 
   return (
     <main>
-      <section className="hero">
+      <section className="hero user-theme">
         <div className="hero-content">
           <span className="pill">Welcome back</span>
           <h1 className="hero-title">Hello {userName || "User"}</h1>
           <p className="hero-subtitle">Your latest bookings and payment status live here.</p>
           <div className="hero-actions">
-            <a className="btn" href="/user/booking">Book a cab</a>
+            <a href="/user/profile" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 42, height: 42, background: 'var(--primary)', borderRadius: '50%', color: 'white', textDecoration: 'none' }} title="My Profile">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+            </a>
+            <a className="btn" href="/user/booking">Book a Cab</a>
             <form action="/api/user/logout" method="POST">
               <button className="btn secondary" type="submit">Logout</button>
             </form>
@@ -113,6 +116,7 @@ export default async function UserDashboard({ searchParams }) {
                   <th>Pickup</th>
                   <th>Drop</th>
                   <th>Cab</th>
+                  <th>Driver</th>
                   <th>Distance</th>
                   <th>Fare</th>
                   <th>Status</th>
@@ -124,11 +128,18 @@ export default async function UserDashboard({ searchParams }) {
                 {bookings.map((booking) => {
                   const isPaid = paymentMap.get(booking.booking_id) === "Paid" || booking.payment_status === "Paid";
                   const displayPayment = paymentMap.get(booking.booking_id) || booking.payment_status || "Not Paid";
-                  const canCancel = booking.status !== "Dropped" && booking.status !== "Cancelled";
+                  const canCancel = booking.status !== "Dropped" && booking.status !== "Cancelled" && booking.status !== "Rejected";
                   const canPay =
                     booking.status === "Dropped" &&
                     (booking.distance_km || booking.fare_amount) &&
                     !isPaid;
+                  
+                  let stateColor = 'var(--ink)';
+                  let stateBg = '#f0f0f0';
+                  if (booking.status === 'Rejected') { stateColor = 'white'; stateBg = '#ef4444'; }
+                  if (booking.status === 'Confirmed') { stateColor = 'white'; stateBg = 'var(--primary)'; }
+                  if (booking.status === 'Requested') { stateColor = 'white'; stateBg = '#f5a623'; }
+
                   return (
                   <tr key={booking.booking_id}>
                     <td>#{booking.booking_id}</td>
@@ -136,9 +147,10 @@ export default async function UserDashboard({ searchParams }) {
                     <td>{booking.pickup_location}</td>
                     <td>{booking.drop_location}</td>
                     <td>{booking.cab_number} ({booking.cab_type})</td>
+                    <td>{booking.driver_name ? `${booking.driver_name} (${booking.driver_phone})` : "Unassigned"}</td>
                     <td>{booking.distance_km ? `${booking.distance_km} km` : "-"}</td>
                     <td>{booking.fare_amount ? `INR ${Number(booking.fare_amount).toFixed(2)}` : "-"}</td>
-                    <td><span className="chip">{booking.status}</span></td>
+                    <td><span className="chip" style={{color: stateColor, backgroundColor: stateBg}}>{booking.status}</span></td>
                     <td>
                       <span className={statusClass(displayPayment)}>
                         {displayPayment}

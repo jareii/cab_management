@@ -10,7 +10,7 @@ export default async function DriverLogin({ searchParams }) {
         <p>Access assigned rides and update status.</p>
         {error === "invalid" && <p className="pill">Login failed. Check your details.</p>}
         {error === "pending" && <p className="pill">Your account is pending admin approval.</p>}
-        {error === "removed" && <p className="pill">Your account was removed by admin.</p>}
+        {error === "removed" && <p className="pill" style={{background: '#ef4444', color: 'white'}}>Your application or account was rejected by Admin.</p>}
         <form className="form-grid" action="/api/driver/login" method="POST">
           <div>
             <label>Email or Phone</label>
@@ -22,6 +22,12 @@ export default async function DriverLogin({ searchParams }) {
           </div>
           <button className="btn" type="submit">Login</button>
         </form>
+        <p style={{ marginTop: 24, fontSize: 14 }}>
+          Want to drive for us?{" "}
+          <a href="/driver/register" style={{ color: "var(--primary-dark)", fontWeight: 600 }}>
+            Submit an application
+          </a>
+        </p>
       </div>
     </main>
   );

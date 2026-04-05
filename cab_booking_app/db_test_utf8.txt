@@ -1,0 +1,8 @@
+Analyzing your MySQL Connection...
+FAILED with password: "Jareena2004" on port 3306 -> Access denied for user 'root'@'localhost' (using password: YES)
+FAILED with password: "" on port 3306 -> Access denied for user 'root'@'localhost' (using password: NO)
+FAILED with password: "root" on port 3306 -> Access denied for user 'root'@'localhost' (using password: YES)
+FAILED with password: "admin" on port 3306 -> Access denied for user 'root'@'localhost' (using password: YES)
+FAILED with password: "admin123" on port 3306 -> Access denied for user 'root'@'localhost' (using password: YES)
+FAILED with password: "Jareena2004" on port 3307 -> connect ECONNREFUSED 127.0.0.1:3307
+FAILED with password: "" on port 3307 -> connect ECONNREFUSED 127.0.0.1:3307

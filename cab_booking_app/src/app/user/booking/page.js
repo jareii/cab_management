@@ -19,8 +19,10 @@ export default async function UserBooking({ searchParams }) {
   }
 
   const cabs = await query(
-    `SELECT c.cab_id, c.cab_number, c.cab_type, c.ac_type
+    `SELECT c.cab_id, c.cab_number, c.cab_type, c.ac_type, d.name as driver_name
      FROM cabs c
+     JOIN drivers d ON c.driver_id = d.driver_id
+     WHERE d.driver_status = 'On Duty'
      ORDER BY c.cab_type, c.ac_type`
   );
   const minDate = new Date().toISOString().slice(0, 10);
@@ -30,8 +32,9 @@ export default async function UserBooking({ searchParams }) {
       <div className="form-card">
         <span className="pill">Create booking</span>
         <h2>Book a Cab</h2>
-        <p>Choose a cab, pickup, and drop location.</p>
-        {params?.error && <p className="pill">Please fill all fields.</p>}
+        <p>Choose an available cab, pickup, and drop location.</p>
+        {params?.error === "unavailable_cab" && <p className="pill" style={{background: 'var(--danger-color)', color: 'white'}}>That cab just became unavailable! Please select another.</p>}
+        {params?.error === "missing" && <p className="pill">Please fill all fields.</p>}
         <form className="form-grid" action="/api/booking/create" method="POST">
           <div>
             <label>Pickup location</label>
@@ -46,12 +49,12 @@ export default async function UserBooking({ searchParams }) {
             <input name="booking_date" type="date" min={minDate} required />
           </div>
           <div>
-            <label>Select cab</label>
+            <label>Select available cab</label>
             <select name="cab_id" required>
               <option value="">Select a cab</option>
               {cabs.map((cab) => (
                 <option key={cab.cab_id} value={cab.cab_id}>
-                  {cab.cab_number} ({cab.cab_type}) - {cab.ac_type}
+                  {cab.driver_name} - {cab.cab_number} ({cab.cab_type} {cab.ac_type})
                 </option>
               ))}
             </select>

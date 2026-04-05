@@ -24,12 +24,12 @@ export async function POST(request) {
   }
 
   const now = toMySqlDateTime();
-  const driverResult = await exec(
-    "INSERT INTO drivers (name, email, phone, password, status, driver_status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING driver_id",
+  const result = await exec(
+    "INSERT INTO drivers (name, email, phone, password, status, driver_status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
     [name, email, phone, password, "Approved", "On Duty", now]
   );
+  const driverId = result.insertId;
 
-  const driverId = driverResult.rows?.[0]?.driver_id;
   await exec(
     "INSERT INTO cabs (cab_number, cab_type, ac_type, driver_id) VALUES (?, ?, ?, ?)",
     [cabNumber, cabType, acType, driverId]

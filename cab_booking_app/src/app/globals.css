@@ -116,6 +116,15 @@ main {
   overflow: hidden;
 }
 
+.hero.user-theme {
+  background: linear-gradient(135deg, #0369a1, #0f172a);
+  color: white;
+}
+.hero.driver-theme {
+  background: linear-gradient(135deg, #b45309, #451a03);
+  color: white;
+}
+
 .hero::after {
   content: "";
   position: absolute;
@@ -143,6 +152,10 @@ main {
   font-size: 18px;
   color: var(--muted);
   max-width: 520px;
+}
+.hero.user-theme .hero-subtitle,
+.hero.driver-theme .hero-subtitle {
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .hero-actions {

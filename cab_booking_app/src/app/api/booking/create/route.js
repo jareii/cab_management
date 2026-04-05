@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { exec, query } from "@/lib/mysql";
+import { pool, query } from "@/lib/mysql";
 import { toMySqlDateTime } from "@/lib/time";
 
 export async function POST(request) {
@@ -35,37 +35,45 @@ export async function POST(request) {
   const userRows = await query("SELECT phone FROM users WHERE user_id = ?", [Number(userId)]);
   const userPhone = userRows[0]?.phone || "";
 
-  const duplicate = await query(
-    `SELECT booking_id FROM booking
-     WHERE user_id = ? AND cab_id = ? AND pickup_location = ? AND drop_location = ? AND booking_date = ?
-       AND created_at >= (NOW() - INTERVAL '2 minutes')
-     LIMIT 1`,
-    [Number(userId), cab.cab_id, pickup, drop, bookingDate]
-  );
-  if (duplicate.length > 0) {
-    return NextResponse.redirect(new URL("/user/dashboard?booked=1", request.url));
-  }
-
   const now = toMySqlDateTime();
-  await exec(
-    "INSERT INTO booking (user_id, cab_id, pickup_location, drop_location, booking_date, booking_time, status, distance_km, fare_amount, payment_status, created_at, updated_at, user_phone, driver_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-    [
-      Number(userId),
-      cab.cab_id,
-      pickup,
-      drop,
-      bookingDate,
-      new Date().toTimeString().slice(0, 8),
-      "Requested",
-      null,
-      null,
-      "Not Paid",
-      now,
-      now,
-      userPhone,
-      cab.driver_id,
-    ]
-  );
+  const timeStr = new Date().toTimeString().slice(0, 8);
+  const connection = await pool.getConnection();
+  
+  try {
+    // 1. Begin atomic transaction
+    await connection.beginTransaction();
+
+    // 2. Grasp a Pessimistic Padlock (FOR UPDATE) exclusively on the requested cab row.
+    // If another zero-millisecond request tries to lock this exact cab, MySQL forces them to queue up and wait!
+    await connection.query("SELECT cab_id FROM cabs WHERE cab_id = ? FOR UPDATE", [cab.cab_id]);
+
+    // 3. Perform the collision scan while holding the padlock securely
+    const [conflictRows] = await connection.query(
+      `SELECT booking_id FROM booking
+       WHERE cab_id = ? AND booking_date = ? AND status IN ('Requested', 'Confirmed', 'Picked')
+       LIMIT 1`,
+      [cab.cab_id, bookingDate]
+    );
+
+    if (conflictRows.length > 0) {
+      await connection.rollback(); // Drop padlock and abort
+      return NextResponse.redirect(new URL("/user/booking?error=unavailable_cab", request.url));
+    }
+
+    // 4. Guaranteed safe: Insert the booking into the ledger
+    await connection.query(
+      "INSERT INTO booking (user_id, cab_id, pickup_location, drop_location, booking_date, booking_time, status, distance_km, fare_amount, payment_status, created_at, updated_at, user_phone, driver_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      [Number(userId), cab.cab_id, pickup, drop, bookingDate, timeStr, "Requested", null, null, "Not Paid", now, now, userPhone, cab.driver_id]
+    );
+
+    // 5. Commit changes to physical disk and permanently drop the padlock
+    await connection.commit();
+  } catch (err) {
+    if (connection) await connection.rollback();
+    return NextResponse.redirect(new URL("/user/booking?error=system", request.url));
+  } finally {
+    if (connection) connection.release(); // Return physical connection back to the MySQL connection pool
+  }
 
   return NextResponse.redirect(new URL("/user/dashboard?booked=1", request.url));
 }
